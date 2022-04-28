@@ -1,0 +1,66 @@
+### Get account
+GET /accounts/+4915226920699 HTTP/1.1
+Host: localhost:4040
+
+
+### Register / Create account
+POST /accounts/+4915226920699 HTTP/1.1
+Host: localhost:4040
+Content-Type: application/json
+Content-Length: 592
+
+{
+  "captcha": "03AGdBq2487Xag_n0rHvI7cA0U2ZbQRazOVqr8L9kHrSekiJBpTleOyQhguj2EyMA7Zj8gYRhujRe5wPJI_iDEWvw5K4vWQgMhvz7xoGJVhE0lgIYBVQu-RkhWMbiBQonwFpekl1kldViIlDqKAb8PJqjyzZBVXyXFzrJyiqdgkvPPS63rChd_RpG-h-5L1nE_yLkO9BoETxnP06AttDOKkHk54-dFxBVXUac9LTfXC7EYZzcs3Swob7DxuBUWvYS9BJgXLI_1Oz6oPHbyXx6Y0MEZvYM0WyCnTBfiuNKIbv_YOQuep7tEm5HSCghYAaDmL6JBdn4YwBwSr0G2MGOqgFZdlzw5-WYp-sJpemkO5BhVMHeYWPNWtm-ZvzAdAI3gVc-6YO7zZI3ZmFpEyR5jj4k6EfHylgj8JGVsrEAuIyY2kOJ-BFJJfyVvVyA7fD_x2vu7QuywKNzSJkRUaq04d_naQE5ZTJ9-mM0DsBV-XvgB7I9HzSBPEC5W1y-T_Q6AJYCbD5AI7fVseWwdfCaSvcPLfW8hBUH_FQ",
+  "use_voice": false
+}
+
+
+### Verify Account
+PATCH /accounts/+4915226920699 HTTP/1.1
+Host: localhost:4040
+Content-Type: application/json
+Content-Length: 25
+
+{
+    "token": 745400
+}
+
+
+### Delete Account
+DELETE /accounts/+4915226920699 HTTP/1.1
+Host: localhost:4040
+
+
+### Receive messages
+GET /messages/+4915226920699 HTTP/1.1
+Host: localhost:4040
+
+
+### Send messages
+POST /messages/+4915226920699 HTTP/1.1
+Host: localhost:4040
+Content-Type: application/json
+Content-Length: 79
+
+{
+  "message": "Test message",
+  "recipients": [
+    "+491794411360"
+  ]
+}
+
+
+### Create webhook
+POST /accounts/+4915226920699/webhook HTTP/1.1
+Host: localhost:4040
+Content-Type: application/json
+Content-Length: 111
+
+{
+    "webhook": "https://4090-2003-e9-a716-9716-9837-813a-64e8-2d0.ngrok.io/mod/motbot/signal_webhook.php"
+}
+
+
+### Delete webhook
+DELETE /accounts/+4915226920699/webhook HTTP/1.1
+Host: localhost:4040
