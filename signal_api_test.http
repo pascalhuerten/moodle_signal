@@ -16,13 +16,24 @@ Content-Length: 592
 
 
 ### Verify Account
-PATCH /accounts/+4915226920699 HTTP/1.1
+PATCH /accounts/+4915226920699/verify HTTP/1.1
 Host: localhost:4040
 Content-Type: application/json
 Content-Length: 25
 
 {
     "token": 745400
+}
+
+
+### Update Account Info
+PATCH /accounts/+4915226920699 HTTP/1.1
+Host: localhost:4040
+Content-Type: application/json
+Content-Length: 25
+
+{
+    "name": "SignalBot"
 }
 
 

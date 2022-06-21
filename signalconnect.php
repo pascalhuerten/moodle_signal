@@ -170,9 +170,8 @@ if ($action == 'verifyaccount') {
     } else {
         if ($verifyform->action() === true) {
             redirect($returnurl, get_string('accountverified', 'message_signal'), null, \core\output\notification::NOTIFY_SUCCESS);
-        } else {
-            redirect($returnurl, get_string('verificationtokeninvalid', 'message_signal'), null, \core\output\notification::NOTIFY_ERROR);
         }
+        core\notification::error(get_string('verificationtokeninvalid', 'message_signal'));
     }
 
     // Build page.

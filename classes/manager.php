@@ -36,12 +36,8 @@ require_once($CFG->dirroot . '/lib/filelib.php');
  * @copyright  2022 onwards Pascal Hürten (pascal.huerten@th-luebeck.de)
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class manager {
-
-    /**
-     * @var string $secretprefix A variable used to identify that chatid had not been set for the user.
-     */
-    private $secretprefix = 'usersecret::';
+class manager
+{
 
     /**
      * @var \curl $curl The curl object used in this run. Avoids continuous creation of a curl object.
@@ -56,10 +52,10 @@ class manager {
     /**
      * Constructor. Loads all needed data.
      */
-    public function __construct() {
-        global $CFG;
+    public function __construct()
+    {
         $this->config = get_config('message_signal');
-        $this->signalapihost = 'localhost:8080';
+        $this->signalapihost = get_config('message_signal', 'signalapiurl');
     }
 
     /**
@@ -68,7 +64,8 @@ class manager {
      * @param string $name The name of the config item.
      * @param string $value The value of the config item.
      */
-    public function set_config($name, $value) {
+    public function set_config($name, $value)
+    {
         set_config($name, $value, 'message_signal');
         $this->config->{$name} = $value;
     }
@@ -79,7 +76,8 @@ class manager {
      * @param string $configitem The requested configuration item.
      * @return mixed The requested value or null.
      */
-    public function config($configitem) {
+    public function config($configitem)
+    {
         return isset($this->config->{$configitem}) ? $this->config->{$configitem} : null;
     }
 
@@ -90,7 +88,8 @@ class manager {
      * @param int $userid Moodle id of the user in question.
      * @return string The HTML for the form.
      */
-    public function config_form($preferences, $userid) {
+    public function config_form($preferences, $userid)
+    {
         // If the account number is not set, display the form to set it.
         if (!static::is_user_account_set($userid, $preferences)) {
             $url = new \moodle_url(static::redirect_uri(), [
@@ -116,7 +115,8 @@ class manager {
      * @param object|null $preferences Contains the Signal user preferences for the user, if present.
      * @return boolean True if the id is set.
      */
-    public static function is_user_account_set($userid, $preferences = null) {
+    public static function is_user_account_set($userid, $preferences = null)
+    {
         if ($preferences === null) {
             $preferences = new \stdClass();
         }
@@ -130,7 +130,8 @@ class manager {
      * Return the redirect URI to handle the callback for OAuth.
      * @return string The URI.
      */
-    public static function redirect_uri() {
+    public static function redirect_uri()
+    {
         global $CFG;
 
         return $CFG->wwwroot . '/message/output/signal/signalconnect.php';
@@ -143,7 +144,8 @@ class manager {
      * @param int|null $userid The id of the user in question.
      * @return void.
      */
-    public function set_user_account($account, $userid = null) {
+    public function set_user_account($account, $userid = null)
+    {
         global $USER;
 
         if ($userid === null) {
@@ -164,7 +166,8 @@ class manager {
      * @param int|null $userid The id to be cleared.
      * @return void.
      */
-    public function remove_user_account($userid = null) {
+    public function remove_user_account($userid = null)
+    {
         global $USER;
 
         if ($userid === null) {
@@ -184,12 +187,21 @@ class manager {
      *
      * @return mixed
      */
-    public function on_config_change($key) {
+    public function on_config_change($key)
+    {
         // Get submitted data.
         $data = data_submitted();
 
         if ($key === 's_message_signal_botaccount') {
             $botaccount = $data->{$key};
+            $previous = $this->config('botaccount');
+            $this->set_config('botaccount', null);
+
+            // If nothing has changed, return.
+            if ($botaccount == $previous) {
+                $this->set_config('botaccount', '');
+                return;
+            }
 
             // If no botaccount is set, delete any previously set account.
             if (!isset($botaccount) || empty($botaccount) || $botaccount === '') {
@@ -197,6 +209,7 @@ class manager {
             }
 
             if ($this->is_account_verified($botaccount)) {
+                $this->set_config('botaccount', $botaccount);
                 redirect(
                     new \moodle_url('/admin/settings.php?section=messagesettingsignal'),
                     get_string('accountcreated', 'message_signal'),
@@ -205,7 +218,6 @@ class manager {
                 );
             }
 
-            $this->set_config('botaccount', null);
             redirect(new \moodle_url(static::redirect_uri(), [
                 'action' => 'captcha',
                 'sesskey' => sesskey(),
@@ -215,7 +227,67 @@ class manager {
         }
 
         if ($key === 's_message_signal_botname') {
-            return \core\notification::info('Did not set the bot name. This feature is not yet implemented.');
+            $botaccount = $this->config('botaccount');
+            $botname = $data->{$key};
+            $this->set_config('botname', null);
+
+            // Do not set name if botaccount is not yet set.
+            if (!isset($botname) || empty($botname) || $botname === '') {
+                return \core\notification::warning('Please set the botaccount number first.');
+            }
+
+            // If no botname is set, delete any previously set name.
+            if (!isset($botname) || empty($botname) || $botname === '') {
+                if (empty($this->config('botname'))) {
+                    return;
+                }
+
+                return $this->update_account_info($botaccount, '');
+            }
+
+            $result = $this->update_account_info($botaccount, $botname);
+            if ($result === true) {
+                $this->set_config('botname', $botname);
+                return \core\notification::success('Account name updated successfully.');
+            }
+
+            if (!$this->is_account_verified()) {
+                $this->set_config('botaccount', null);
+            }
+            // Error.
+            return $result;
+        }
+
+        if ($key === 's_message_signal_botabout') {
+            $botaccount = $this->config('botaccount');
+            $botabout = $data->{$key};
+            $this->set_config('botname', null);
+
+            // Do not set name if botaccount is not yet set.
+            if (!isset($botaccount) || empty($botaccount) || $botaccount === '') {
+                return \core\notification::warning('Please set the botaccount number first.');
+            }
+
+            // If no botabout is set, delete any previously set name.
+            if (!isset($botabout) || empty($botabout) || $botabout === '') {
+                if (empty($this->config('botabout'))) {
+                    return;
+                }
+
+                return $this->update_account_info($botaccount, null, '');
+            }
+
+            $result = $this->update_account_info($botaccount, null, $botabout);
+            if ($result === true) {
+                $this->set_config('botabout', $botabout);
+                return \core\notification::success('About info updated successfully.');
+            }
+
+            if (!$this->is_account_verified()) {
+                $this->set_config('botaccount', null);
+            }
+            // Error.
+            return $result;
         }
 
         if ($key === 's_message_signal_webhook') {
@@ -246,12 +318,15 @@ class manager {
      * @param string $webhook The url of the webhook.
      * @return mixed
      */
-    public function create_webhook($webhook) {
+    public function create_webhook($webhook)
+    {
         $this->get_curl()->setHeader('Content-Type: application/json');
         $json = json_encode(['webhook' => $webhook]);
-        $response = json_decode($this->get_curl()->post(
-            $this->signalapihost  . '/accounts/' . $this->config('botaccount') . '/webhook',
-            $json)
+        $response = json_decode(
+            $this->get_curl()->post(
+                $this->signalapihost  . '/accounts/' . $this->config('botaccount') . '/webhook',
+                $json
+            )
         );
         $httpcode = $this->get_curl()->get_info()['http_code'];
         if ($httpcode < 200 || $httpcode >= 300) {
@@ -267,9 +342,12 @@ class manager {
      * @param string $webhook The url of the webhook.
      * @return mixed
      */
-    public function delete_webhook() {
-        $response = json_decode($this->get_curl()->delete(
-            $this->signalapihost  . '/accounts/' . $this->config('botaccount') . '/webhook')
+    public function delete_webhook()
+    {
+        $response = json_decode(
+            $this->get_curl()->delete(
+                $this->signalapihost  . '/accounts/' . $this->config('botaccount') . '/webhook'
+            )
         );
         $httpcode = $this->get_curl()->get_info()['http_code'];
         if ($httpcode < 200 || $httpcode >= 300) {
@@ -285,15 +363,14 @@ class manager {
      * @param string|null $botaccount The signal account number.
      * @return mixed
      */
-    public function is_account_verified($botaccount = null) {
+    public function is_account_verified($botaccount = null)
+    {
         if (!$botaccount) {
             $botaccount = $this->config('botaccount');
         }
 
-        $verified = $this->config('verified');
-        if ($verified === true) {
-            return true;
-        }
+        $verified = false;
+
         $response = json_decode($this->get_curl()->get($this->signalapihost  . '/accounts/' . $botaccount));
         $httpcode = $this->get_curl()->get_info()['http_code'];
 
@@ -319,15 +396,35 @@ class manager {
      * @param string $token Signal token used for verification.
      * @return mixed
      */
-    public function verify_account($botaccount, $token) {
+    public function verify_account($botaccount, $token)
+    {
         $this->get_curl()->setHeader('Content-Type: application/json');
         $json = json_encode(['token' => $token]);
-        $response = json_decode($this->get_curl()->patch($this->signalapihost  . '/accounts/' . $botaccount, $json));
+        $response = json_decode($this->get_curl()->patch("$this->signalapihost/accounts/$botaccount/verify", $json));
         $httpcode = $this->get_curl()->get_info()['http_code'];
         if ($httpcode < 200 || $httpcode >= 300) {
             return get_string('errorverifingaccount', 'message_signal');
         }
         $this->set_config('verified', true);
+        return true;
+    }
+
+    /**
+     * Verifies a signal account.
+     *
+     * @param string $botaccount The signal account number.
+     * @param string $token Signal token used for verification.
+     * @return mixed
+     */
+    public function update_account_info($botaccount, $botname = null, $botabout = null)
+    {
+        $this->get_curl()->setHeader('Content-Type: application/json');
+        $json = json_encode(['name' => $botname, 'about' => $botabout]);
+        $response = json_decode($this->get_curl()->patch("$this->signalapihost/accounts/$botaccount", $json));
+        $httpcode = $this->get_curl()->get_info()['http_code'];
+        if ($httpcode < 200 || $httpcode >= 300) {
+            return get_string('errorupdatingaccount', 'message_signal');
+        }
         return true;
     }
 
@@ -338,7 +435,8 @@ class manager {
      * @param string $captcha A Captcha code to verify integrity of request.
      * @return bool|string
      */
-    public function check_consent($account) {
+    public function check_consent($account)
+    {
         global $USER;
         $botaccount = $this->config('botaccount');
         $this->get_curl()->setHeader('Content-Type: application/json');
@@ -348,7 +446,8 @@ class manager {
                 $this->signalapihost  . '/messages/consent/' . $botaccount,
                 json_encode(
                     array(
-                        "consentMessage" => (new \lang_string('consentmessage', 'message_signal', array('name' => $USER->firstname, 'consentword' => $consentword)))->out($USER->lang),
+                        "consentMessage" => (new \lang_string('consentmessage', 'message_signal', array('name' => $USER->firstname, 'consentword' => $consentword))
+                        )->out($USER->lang),
                         "consentGiven" => (new \lang_string('consentgiven', 'message_signal'))->out($USER->lang),
                         "consentDenied" => (new \lang_string('consentdenied', 'message_signal'))->out($USER->lang),
                         "consentWord" => $consentword,
@@ -373,7 +472,8 @@ class manager {
      * @param string $captcha A Captcha code to verify integrity of request.
      * @return mixed
      */
-    public function create_account($botaccount, $captcha) {
+    public function create_account($botaccount, $captcha)
+    {
         $this->get_curl()->setHeader('Content-Type: application/json');
         $response = json_decode(
             $this->get_curl()->post(
@@ -396,7 +496,8 @@ class manager {
      *
      * @return mixed
      */
-    private function delete_account() {
+    private function delete_account()
+    {
         $this->delete_webhook();
         $response = json_decode($this->get_curl()->delete($this->signalapihost  . '/accounts/' . $this->config('botaccount')));
         $httpcode = $this->get_curl()->get_info()['http_code'];
@@ -417,7 +518,8 @@ class manager {
      * @param array|null $params Additional optional paramaters (chatid, text, parse_mode, reply_markup and more).
      * @return boolean True if message was successfully sent, else false.
      */
-    public function send_message($message, $userid = null, $params = array()) {
+    public function send_message($message, $userid = null, $params = array())
+    {
         $botaccount = $this->config('botaccount');
 
         if (!isset($botaccount) || empty($botaccount)) {
@@ -449,7 +551,8 @@ class manager {
         return ($httpcode >= 200 && $httpcode < 300);
     }
 
-    private function get_curl() {
+    private function get_curl()
+    {
         if ($this->curl === null) {
             $this->curl = new \curl();
         };

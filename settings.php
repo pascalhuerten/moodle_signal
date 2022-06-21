@@ -28,15 +28,29 @@ defined('MOODLE_INTERNAL') || die;
 if ($ADMIN->fulltree) {
     $signalmanager = new message_signal\manager();
 
+    $signalapiurl = $signalmanager->config('signalapiurl');
     $botaccount = $signalmanager->config('botaccount');
     $botname = $signalmanager->config('botname');
+    $botabout = $signalmanager->config('botabout');
     $webhook = $signalmanager->config('webhook');
 
     $signalmanager = new message_signal\manager();
 
+    if (empty($signalapiurl)) {
+        $signalapiurl = "localhost:8080";
+    }
+
     if (empty($botaccount)) {
-        $site = get_site();
-        $uniquename = $site->fullname . ' ' . get_string('notifications');
+        $signalmanager->set_config('botname', null);
+        $signalmanager->set_config('webhook', null);
+        $signalmanager->set_config('botabout', null);
+    } else {
+        if (!$signalmanager->is_account_verified()) {
+            $signalmanager->set_config('botaccount', null);
+        }
+    }
+
+    if (empty($botname)) {
         $sitehostname = parse_url($CFG->wwwroot, PHP_URL_HOST);
         $lastdot = strrpos($sitehostname, '.');
         if ($lastdot !== false) {
@@ -50,29 +64,55 @@ if ($ADMIN->fulltree) {
         }
         // The username cannot be longer than 32 characters total, and must end in "bot".
         $botname = substr($botname, 0, 29) . 'Bot';
-
-        $signalmanager->set_config('webhook', null);
     }
 
-    $settings->add($botaccountsetting = new message_signal\admin_setting_config_international_phone_number(
-        'message_signal/botaccount',
-        get_string('botaccount', 'message_signal'),
-        get_string('configbotaccount', 'message_signal'),
-        $botaccount,
-        PARAM_TEXT
-    ));
-    // Create a new signal account if message_signal/botaccount changes.
-    $botaccountsetting->set_updatedcallback(array($signalmanager, 'on_config_change'));
+    if (empty($botabout)) {
+        $botabout = "I am a Bot. I live here $CFG->wwwroot";
+    }
 
-    $settings->add($botnamesetting = new admin_setting_configtext(
-        'message_signal/botname',
-        get_string('botname', 'message_signal'),
-        get_string('configbotname', 'message_signal'),
-        $botname,
-        PARAM_TEXT
+    $settings->add($botaccountsetting = new admin_setting_configtext(
+        'message_signal/signalapiurl',
+        get_string('signalapiurl', 'message_signal'),
+        get_string('signalapiurldesc', 'message_signal'),
+        "localhost:8080",
+        PARAM_URL
     ));
-    // Update account information if message_signal/botname changes.
-    $botnamesetting->set_updatedcallback(array($signalmanager, 'on_config_change'));
+
+    if (!empty($signalapiurl)) {
+        $settings->add($botaccountsetting = new message_signal\admin_setting_config_international_phone_number(
+            'message_signal/botaccount',
+            get_string('botaccount', 'message_signal'),
+            get_string('configbotaccount', 'message_signal'),
+            $botaccount,
+            PARAM_TEXT
+        ));
+        // Create a new signal account if message_signal/botaccount changes.
+        $botaccountsetting->set_updatedcallback(array($signalmanager, 'on_config_change'));
+    }
+
+    if (!empty($botaccount)) {
+        $settings->add($botnamesetting = new admin_setting_configtext(
+            'message_signal/botname',
+            get_string('botname', 'message_signal'),
+            get_string('configbotname', 'message_signal'),
+            $botname,
+            PARAM_TEXT
+        ));
+        // Update account information if message_signal/botname changes.
+        $botnamesetting->set_updatedcallback(array($signalmanager, 'on_config_change'));
+    }
+
+    if (!empty($botaccount)) {
+        $settings->add($botnamesetting = new admin_setting_configtext(
+            'message_signal/botabout',
+            get_string('botabout', 'message_signal'),
+            get_string('botaboutdesc', 'message_signal'),
+            $botabout,
+            PARAM_TEXT
+        ));
+        // Update account information if message_signal/botname changes.
+        $botnamesetting->set_updatedcallback(array($signalmanager, 'on_config_change'));
+    }
 
     if (!empty($botaccount)) {
         $settings->add($webhooksetting = new admin_setting_configtext(

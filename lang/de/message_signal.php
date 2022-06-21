@@ -28,6 +28,8 @@ defined('MOODLE_INTERNAL') || die();
 $string['accountcreated'] = 'Signal Account erfolgreich erstellt';
 $string['accountdeleted'] = 'Signal Account erfolgreich gelöscht';
 $string['accountverified'] = 'Signal Account erfolgreich verifiziert';
+$string['botabout'] = 'Account Status Info';
+$string['botaboutdesc'] = 'Status Nachricht, die im Profil des Signal-Accounts angezeigt wird.';
 $string['botaccount'] = 'Signal Account Number';
 $string['botaccount_help'] = 'Ihre Mobiltelefonnummer im internationalen Format: "+ (Ländercode) (Nummer)" z.B +99 123 456789';
 $string['botname'] = 'Bot-Name';
@@ -62,6 +64,8 @@ $string['requirehttps'] = 'Die Seite muss HTTPS für Signals Webhook-Funktion un
 $string['setupinstructions'] = 'TODO';
 $string['setwebhook'] = 'Webhook anlegen';
 $string['signalchatid'] = 'Signal-Chat-ID';
+$string['signalapiurl'] = 'Signal API URL';
+$string['signalapiurldesc'] = 'Diese Adresse wird genutzt, um Anfragen an die Signal API zu senden.';
 $string['urlinvalid'] = 'Bitte geben Sie eine valide URL an';
 $string['verificationtoken'] = 'Signal Token';
 $string['verificationtokeninvalid'] = 'Der angegebende Token ist nicht valide';
